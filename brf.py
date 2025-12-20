@@ -1,203 +1,152 @@
-import tkinter as tk
-from tkinter import font
-import math
+import customtkinter as ctk
+import random
 
-class BRFMenu:
+class BRFApp:
     def __init__(self):
-        self.root = tk.Tk()
+        # Configurare CustomTkinter
+        ctk.set_appearance_mode("dark")
+        ctk.set_default_color_theme("blue")
+        
+        # Creare fereastră
+        self.root = ctk.CTk()
         self.root.title("BRF")
+        self.root.geometry("800x400")
         
-        # Setări fereastră transparentă
-        self.root.overrideredirect(True)
-        self.root.attributes('-alpha', 0.95)
-        self.root.attributes('-topmost', True)
-        self.root.configure(bg='#000000')
+        # Permite redimensionarea
+        self.root.resizable(True, True)
         
-        # Dimensiuni
-        self.width, self.height = 450, 300
-        self.root.geometry(f"{self.width}x{self.height}")
+        # Variabile pentru animație
+        self.color_index = 0
+        self.colors = [
+            "#00FF88",  # Verde strălucitor
+            "#00AAFF",  # Albastru deschis
+            "#FF8800",  # Portocaliu
+            "#FF44AA",  # Roz
+            "#8844FF"   # Violet
+        ]
         
-        # Canvas pentru fundal și animații
-        self.canvas = tk.Canvas(
+        # Fundal animat
+        self.canvas = ctk.CTkCanvas(
             self.root,
-            bg='#000000',
-            highlightthickness=0,
-            width=self.width,
-            height=self.height
+            bg="#0A0A1E",  # Albastru închis
+            highlightthickness=0
         )
-        self.canvas.pack(fill=tk.BOTH, expand=True)
+        self.canvas.pack(fill="both", expand=True)
         
-        # Crează conținutul
-        self.create_background()
+        # Creare text
         self.create_text()
-        self.create_buttons()
         
-        # Centrează fereastra
+        # Centrare inițială
         self.center_window()
         
-        # Variabile animație
-        self.angle = 0
-        self.time = 0
-        
         # Pornește animațiile
-        self.animate()
+        self.root.after(100, self.animate_background)
+        self.root.after(2000, self.animate_colors)
         
-        # Evenimente mouse
-        self.canvas.bind("<Button-1>", self.start_move)
-        self.canvas.bind("<B1-Motion>", self.on_move)
+        # Bind pentru redimensionare
+        self.root.bind("<Configure>", self.on_resize)
         
+        # Rulează aplicația
         self.root.mainloop()
     
-    def create_background(self):
-        """Creează fundalul cu gradient și efecte"""
-        # Gradient fundal
-        self.bg_gradient = self.canvas.create_rectangle(
-            0, 0, self.width, self.height,
-            fill="#0a0a1a",
-            outline=""
-        )
-        
-        # Linii decorative animatate
-        self.lines = []
-        colors = ["#00ffaa20", "#00aaff20", "#aa00ff20"]
-        for i in range(3):
-            line = self.canvas.create_line(
-                0, 50 + i*30, self.width, 50 + i*30,
-                fill=colors[i],
-                width=1
-            )
-            self.lines.append(line)
-    
-    def create_text(self):
-        """Creează textul BRF și BotRobloxFarm"""
-        # BRF text - MARE și centrat
-        self.brf_font = font.Font(family="Segoe UI", size=64, weight="bold")
-        self.brf_text = self.canvas.create_text(
-            self.width//2, self.height//2 - 30,
-            text="BRF",
-            font=self.brf_font,
-            fill="#00ffaa",
-            anchor="center"
-        )
-        
-        # BotRobloxFarm text
-        self.sub_font = font.Font(family="Segoe UI", size=22, weight="normal")
-        self.sub_text = self.canvas.create_text(
-            self.width//2, self.height//2 + 30,
-            text="BotRobloxFarm",
-            font=self.sub_font,
-            fill="#88ffcc",
-            anchor="center"
-        )
-        
-        # Linie subțire sub text
-        self.canvas.create_line(
-            self.width//2 - 100, self.height//2 + 60,
-            self.width//2 + 100, self.height//2 + 60,
-            fill="#00ffaa40",
-            width=1
-        )
-    
-    def create_buttons(self):
-        """Creează butoanele X și -"""
-        # Frame pentru butoane (transparent)
-        self.button_frame = tk.Frame(self.canvas, bg='#00000000')
-        self.button_frame.place(x=self.width-80, y=10, width=70, height=30)
-        
-        # Buton Minimize (-)
-        self.min_btn = tk.Button(
-            self.button_frame,
-            text="–",
-            font=("Arial", 14, "bold"),
-            fg="white",
-            bg="#4488ff",
-            activebackground="#66aaff",
-            activeforeground="white",
-            bd=0,
-            width=2,
-            height=1,
-            command=self.root.iconify
-        )
-        self.min_btn.pack(side=tk.LEFT, padx=2)
-        
-        # Buton Close (X)
-        self.close_btn = tk.Button(
-            self.button_frame,
-            text="×",
-            font=("Arial", 14, "bold"),
-            fg="white",
-            bg="#ff4444",
-            activebackground="#ff6666",
-            activeforeground="white",
-            bd=0,
-            width=2,
-            height=1,
-            command=self.root.destroy
-        )
-        self.close_btn.pack(side=tk.LEFT, padx=2)
-        
-        # Text mic în colț
-        self.canvas.create_text(
-            10, self.height - 10,
-            text="v2.0",
-            font=("Arial", 8),
-            fill="#444444",
-            anchor="sw"
-        )
-    
     def center_window(self):
-        """Centrează fereastra"""
+        """Centrează fereastra pe ecran"""
         self.root.update_idletasks()
+        width = self.root.winfo_width()
+        height = self.root.winfo_height()
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
-        x = (screen_width // 2) - (self.width // 2)
-        y = (screen_height // 2) - (self.height // 2)
-        self.root.geometry(f'+{x}+{y}')
+        x = (screen_width // 2) - (width // 2)
+        y = (screen_height // 2) - (height // 2)
+        self.root.geometry(f"{width}x{height}+{x}+{y}")
     
-    def start_move(self, event):
-        """Începe glisarea"""
-        self.x = event.x
-        self.y = event.y
+    def create_text(self):
+        """Creează textul animat"""
+        # Coordonate centru
+        width = self.canvas.winfo_width() or 800
+        height = self.canvas.winfo_height() or 400
+        
+        # Text principal cu umbră
+        self.text_shadow = self.canvas.create_text(
+            width // 2 + 4,
+            height // 2 + 4,
+            text="BotRobloxFarm(BRF)",
+            font=("Arial", 48, "bold"),
+            fill="#000000"
+        )
+        
+        # Text principal
+        self.text_main = self.canvas.create_text(
+            width // 2,
+            height // 2,
+            text="BotRobloxFarm(BRF)",
+            font=("Arial", 48, "bold"),
+            fill=self.colors[0]
+        )
     
-    def on_move(self, event):
-        """Glisează fereastra"""
-        deltax = event.x - self.x
-        deltay = event.y - self.y
-        x = self.root.winfo_x() + deltax
-        y = self.root.winfo_y() + deltay
-        self.root.geometry(f"+{x}+{y}")
+    def animate_background(self):
+        """Animează fundalul cu efect de particule"""
+        width = self.canvas.winfo_width()
+        height = self.canvas.winfo_height()
+        
+        if width > 0 and height > 0:
+            # Adaugă puncte strălucitoare random
+            for _ in range(5):
+                x = random.randint(0, width)
+                y = random.randint(0, height)
+                size = random.randint(1, 3)
+                
+                # Punct strălucitor
+                self.canvas.create_oval(
+                    x, y, x + size, y + size,
+                    fill="#FFFFFF",
+                    outline="",
+                    tags="particle"
+                )
+            
+            # Șterge particulele vechi
+            self.canvas.delete("old_particle")
+            
+            # Marchează particulele curente ca vechi
+            particles = self.canvas.find_withtag("particle")
+            for particle in particles:
+                self.canvas.addtag_withtag("old_particle", particle)
+        
+        # Repetă animația
+        self.root.after(100, self.animate_background)
     
-    def animate(self):
-        """Animații continue"""
-        self.time += 0.05
+    def animate_colors(self):
+        """Animează schimbarea culorii textului"""
+        self.color_index = (self.color_index + 1) % len(self.colors)
         
-        # 1. Pulsare text BRF
-        pulse = (math.sin(self.time * 1.5) + 1) / 2
-        r = int(pulse * 50)
-        g = 255
-        b = int(170 + pulse * 85)
-        brf_color = f'#{r:02x}{g:02x}{b:02x}'
-        self.canvas.itemconfig(self.brf_text, fill=brf_color)
+        # Schimbă culoarea textului principal
+        self.canvas.itemconfig(self.text_main, fill=self.colors[self.color_index])
         
-        # 2. Animație linii fundal
-        for i, line in enumerate(self.lines):
-            offset = math.sin(self.time + i) * 10
-            y_pos = 50 + i*30 + offset
-            self.canvas.coords(line, 0, y_pos, self.width, y_pos)
+        # Schimbă și umbra ușor
+        shadow_color = f"#{max(0, int(self.colors[self.color_index][1:3], 16) - 50):02x}" \
+                      f"{max(0, int(self.colors[self.color_index][3:5], 16) - 50):02x}" \
+                      f"{max(0, int(self.colors[self.color_index][5:7], 16) - 50):02x}"
+        self.canvas.itemconfig(self.text_shadow, fill=shadow_color)
         
-        # 3. Gradient animat
-        gradient_phase = math.sin(self.time * 0.3) * 0.1 + 0.5
-        dark = int(10 * gradient_phase)
-        gradient_color = f'#{dark:02x}0a{int(26*gradient_phase):02x}'
-        self.canvas.itemconfig(self.bg_gradient, fill=gradient_color)
-        
-        # 4. Efect de "glow" pe text
-        glow_size = abs(math.sin(self.time)) * 3
-        self.canvas.itemconfig(self.brf_text, font=("Segoe UI", 64 + int(glow_size), "bold"))
-        
-        # Continuă animația
-        self.root.after(50, self.animate)
+        # Repetă animația
+        self.root.after(2000, self.animate_colors)
+    
+    def on_resize(self, event):
+        """Reactualizează textul la redimensionare"""
+        if event.widget == self.root:
+            width = self.canvas.winfo_width()
+            height = self.canvas.winfo_height()
+            
+            if width > 0 and height > 0:
+                # Actualizează poziția textului
+                self.canvas.coords(self.text_shadow, width // 2 + 4, height // 2 + 4)
+                self.canvas.coords(self.text_main, width // 2, height // 2)
+                
+                # Ajustează dimensiunea fontului
+                font_size = min(72, max(24, min(width, height) // 15))
+                self.canvas.itemconfig(self.text_shadow, font=("Arial", font_size, "bold"))
+                self.canvas.itemconfig(self.text_main, font=("Arial", font_size, "bold"))
 
 # Rulează aplicația
 if __name__ == "__main__":
-    app = BRFMenu()
+    app = BRFApp()
