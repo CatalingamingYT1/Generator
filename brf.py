@@ -1,57 +1,62 @@
 import customtkinter as ctk
 import random
+import math
 
-class BRFApp:
+class ChristmasBRFApp:
     def __init__(self):
         # Configurare CustomTkinter
         ctk.set_appearance_mode("dark")
-        ctk.set_default_color_theme("blue")
         
         # Creare fereastră
         self.root = ctk.CTk()
-        self.root.title("BRF")
-        self.root.geometry("800x400")
+        self.root.title("🎄 BRF Christmas Edition 🎄")
+        self.root.geometry("900x500")
         
-        # Permite redimensionarea și face să funcționeze bine minimize/maximize
+        # Permite redimensionarea
         self.root.resizable(True, True)
+        
+        # Culori de Crăciun
+        self.christmas_colors = [
+            "#FF0000",  # Roșu
+            "#00FF00",  # Verde
+            "#FFFFFF",  # Alb
+            "#FFD700",  # Auriu
+            "#1E90FF",  # Albastru deschis
+        ]
         
         # Variabile pentru animație
         self.color_index = 0
-        self.colors = [
-            "#00FF88",  # Verde strălucitor
-            "#00AAFF",  # Albastru deschis
-            "#FF8800",  # Portocaliu
-            "#FF44AA",  # Roz
-            "#8844FF"   # Violet
-        ]
+        self.snowflakes = []
+        self.lights = []
         
-        # Frame principal care se extinde
-        self.main_frame = ctk.CTkFrame(self.root, fg_color="#0A0A1E")
+        # Frame principal
+        self.main_frame = ctk.CTkFrame(self.root, fg_color="#0A1F0A")  # Verde închis de Crăciun
         self.main_frame.pack(fill="both", expand=True)
         
-        # Canvas pentru fundal și text
+        # Canvas pentru fundal și animații
         self.canvas = ctk.CTkCanvas(
             self.main_frame,
-            bg="#0A0A1E",
+            bg="#0A1F0A",
             highlightthickness=0
         )
         self.canvas.pack(fill="both", expand=True)
         
-        # Creare text inițial
+        # Creare design de Crăciun
+        self.create_christmas_design()
+        
+        # Creare text
         self.create_text()
         
-        # Centrare inițială
+        # Centrare fereastră
         self.center_window()
         
         # Pornește animațiile
-        self.root.after(100, self.animate_background)
-        self.root.after(2000, self.animate_colors)
+        self.root.after(50, self.animate_snow)
+        self.root.after(100, self.animate_lights)
+        self.root.after(2000, self.animate_text_colors)
         
-        # Bind pentru redimensionare și minimize/restore
+        # Bind pentru redimensionare
         self.root.bind("<Configure>", self.on_resize)
-        
-        # Track pentru minimize/maximize
-        self.last_state = "normal"
         
         # Rulează aplicația
         self.root.mainloop()
@@ -59,122 +64,239 @@ class BRFApp:
     def center_window(self):
         """Centrează fereastra pe ecran"""
         self.root.update_idletasks()
-        width = 800
-        height = 400
+        width = 900
+        height = 500
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
         x = (screen_width // 2) - (width // 2)
         y = (screen_height // 2) - (height // 2)
         self.root.geometry(f"{width}x{height}+{x}+{y}")
     
+    def create_christmas_design(self):
+        """Creează designul de Crăciun"""
+        # Adaugă stele pe fundal
+        self.create_stars()
+        
+        # Adaugă luminioare decorative
+        self.create_christmas_lights()
+        
+        # Adaugă fulgi de zăpadă inițiali
+        self.create_initial_snowflakes()
+    
+    def create_stars(self):
+        """Creează stele sclipitoare pe fundal"""
+        width = self.canvas.winfo_width() or 900
+        height = self.canvas.winfo_height() or 500
+        
+        for _ in range(30):
+            x = random.randint(0, width)
+            y = random.randint(0, height)
+            size = random.randint(1, 3)
+            brightness = random.randint(150, 255)
+            color = f"#{brightness:02x}{brightness:02x}{brightness:02x}"
+            
+            star = self.canvas.create_oval(
+                x, y, x + size, y + size,
+                fill=color,
+                outline="",
+                tags="star"
+            )
+    
+    def create_christmas_lights(self):
+        """Creează luminioare de Crăciun"""
+        width = self.canvas.winfo_width() or 900
+        
+        # Creează șir de luminioare
+        num_lights = 20
+        spacing = width / num_lights
+        
+        for i in range(num_lights):
+            x = i * spacing + spacing / 2
+            y = 30
+            
+            light = self.canvas.create_oval(
+                x - 8, y - 8, x + 8, y + 8,
+                fill=random.choice(self.christmas_colors),
+                outline="gold",
+                width=2,
+                tags="light"
+            )
+            
+            # Linie între luminioare
+            if i > 0:
+                self.canvas.create_line(
+                    x - spacing, y, x, y,
+                    fill="gold",
+                    width=2,
+                    tags="light_wire"
+                )
+            
+            self.lights.append({
+                "id": light,
+                "x": x,
+                "y": y,
+                "color_index": random.randint(0, len(self.christmas_colors)-1),
+                "pulse_direction": 1
+            })
+    
+    def create_initial_snowflakes(self):
+        """Creează fulgi de zăpadă inițiali"""
+        width = self.canvas.winfo_width() or 900
+        height = self.canvas.winfo_height() or 500
+        
+        for _ in range(50):
+            self.add_snowflake(width, height)
+    
+    def add_snowflake(self, width, height):
+        """Adaugă un fulg de zăpadă"""
+        x = random.randint(0, width)
+        y = random.randint(-50, 0)  # Încep de deasupra ecranului
+        size = random.randint(2, 6)
+        
+        snowflake = self.canvas.create_oval(
+            x, y, x + size, y + size,
+            fill="#FFFFFF",
+            outline="",
+            tags="snowflake"
+        )
+        
+        self.snowflakes.append({
+            "id": snowflake,
+            "x": x,
+            "y": y,
+            "size": size,
+            "speed": random.uniform(0.5, 2.0),
+            "sway": random.uniform(-1, 1)  # Mișcare laterală
+        })
+    
     def create_text(self):
-        """Creează sau re-creează textul"""
-        # Șterge textul vechi dacă există
-        if hasattr(self, 'text_shadow'):
-            self.canvas.delete(self.text_shadow)
-        if hasattr(self, 'text_main'):
-            self.canvas.delete(self.text_main)
+        """Creează textul principal"""
+        width = self.canvas.winfo_width() or 900
+        height = self.canvas.winfo_height() or 500
         
-        # Dimensiuni canvas
-        width = self.canvas.winfo_width()
-        height = self.canvas.winfo_height()
-        
-        # Dacă canvas-ul nu are încă dimensiuni, folosește default
-        if width <= 1:
-            width = 800
-        if height <= 1:
-            height = 400
-        
-        # Calculează dimensiunea fontului
+        # Dimensiune font bazată pe dimensiunea ferestrei
         font_size = self.calculate_font_size(width, height)
         
-        # Text principal cu umbră
+        # Efect de umbră pentru text
+        shadow_offset = max(3, font_size // 20)
+        
+        # Text cu umbră roșie de Crăciun
         self.text_shadow = self.canvas.create_text(
-            width // 2 + 3,
-            height // 2 + 3,
+            width // 2 + shadow_offset,
+            height // 2 + shadow_offset,
             text="BotRobloxFarm(BRF)",
             font=("Arial", font_size, "bold"),
-            fill="#000000",
+            fill="#8B0000",  # Roșu închis
             anchor="center"
         )
         
-        # Text principal
+        # Text principal cu efect de strălucire
         self.text_main = self.canvas.create_text(
             width // 2,
             height // 2,
             text="BotRobloxFarm(BRF)",
             font=("Arial", font_size, "bold"),
-            fill=self.colors[self.color_index],
+            fill=self.christmas_colors[0],
+            anchor="center"
+        )
+        
+        # Subtitlu festiv
+        self.subtitle = self.canvas.create_text(
+            width // 2,
+            height // 2 + font_size,
+            text="🎅 Merry Christmas! 🎁",
+            font=("Arial", font_size // 3, "bold"),
+            fill="#FFD700",  # Auriu
             anchor="center"
         )
     
     def calculate_font_size(self, width, height):
-        """Calculează dimensiunea optimă a fontului"""
-        min_font = 12  # Minimum când fereastra e foarte mică
-        max_font = 72  # Maximum când fereastra e foarte mare
-        
-        # Folosește dimensiunea mai mică pentru a se potrivi
+        """Calculează dimensiunea fontului"""
         min_dimension = min(width, height)
-        
-        # Formula pentru scalare: între 12 și 72 bazat pe dimensiune
-        if min_dimension <= 200:
-            return min_font
-        elif min_dimension >= 1000:
-            return max_font
-        else:
-            # Scalare lineară între 200 și 1000
-            scale = (min_dimension - 200) / (1000 - 200)
-            return int(min_font + scale * (max_font - min_font))
+        return max(24, min(72, min_dimension // 12))
     
-    def animate_background(self):
-        """Animează fundalul cu efect de particule"""
+    def animate_snow(self):
+        """Animează fulgii de zăpadă"""
         width = self.canvas.winfo_width()
         height = self.canvas.winfo_height()
         
-        # Verifică dacă fereastra este vizibilă (nu minimizată)
-        if self.root.state() != "iconic" and width > 10 and height > 10:
-            # Adaugă puncte strălucitoare random
-            for _ in range(3):
-                x = random.randint(0, width)
-                y = random.randint(0, height)
-                size = random.randint(1, 2)
+        if width > 10 and height > 10:
+            # Mișcă fulgii existenți
+            for snowflake in self.snowflakes[:]:
+                snowflake["y"] += snowflake["speed"]
+                snowflake["x"] += snowflake["sway"] * 0.5
                 
-                # Punct strălucitor
-                self.canvas.create_oval(
-                    x, y, x + size, y + size,
-                    fill="#FFFFFF",
-                    outline="",
-                    tags="particle"
-                )
+                # Dacă fulgul a ieșit din ecran, îl reinițializează
+                if snowflake["y"] > height or snowflake["x"] < 0 or snowflake["x"] > width:
+                    self.canvas.delete(snowflake["id"])
+                    self.snowflakes.remove(snowflake)
+                    self.add_snowflake(width, height)
+                else:
+                    # Actualizează poziția
+                    self.canvas.coords(
+                        snowflake["id"],
+                        snowflake["x"], snowflake["y"],
+                        snowflake["x"] + snowflake["size"], snowflake["y"] + snowflake["size"]
+                    )
             
-            # Șterge particulele vechi
-            old_particles = self.canvas.find_withtag("old_particle")
-            for particle in old_particles:
-                self.canvas.delete(particle)
-            
-            # Marchează particulele curente ca vechi
-            particles = self.canvas.find_withtag("particle")
-            for particle in particles:
-                self.canvas.addtag_withtag("old_particle", particle)
+            # Adaugă fulgi noi ocazional
+            if len(self.snowflakes) < 100 and random.random() < 0.3:
+                self.add_snowflake(width, height)
         
         # Repetă animația
-        self.root.after(150, self.animate_background)
+        self.root.after(30, self.animate_snow)
     
-    def animate_colors(self):
-        """Animează schimbarea culorii textului"""
-        # Doar dacă fereastra nu e minimizată
-        if self.root.state() != "iconic":
-            self.color_index = (self.color_index + 1) % len(self.colors)
+    def animate_lights(self):
+        """Animează luminioarele de Crăciun"""
+        for light in self.lights:
+            # Pulsare culori
+            light["color_index"] = (light["color_index"] + 1) % len(self.christmas_colors)
             
-            # Schimbă culoarea textului principal
-            self.canvas.itemconfig(self.text_main, fill=self.colors[self.color_index])
+            # Schimbă culoarea
+            self.canvas.itemconfig(
+                light["id"],
+                fill=self.christmas_colors[light["color_index"]]
+            )
             
-            # Schimbă și umbra ușor
-            shadow_color = self.darken_color(self.colors[self.color_index], 50)
-            self.canvas.itemconfig(self.text_shadow, fill=shadow_color)
+            # Efect de pulsare (mărire/micșorare)
+            current_coords = self.canvas.coords(light["id"])
+            if len(current_coords) == 4:
+                current_size = current_coords[2] - current_coords[0]
+                
+                if current_size > 12:
+                    light["pulse_direction"] = -1
+                elif current_size < 8:
+                    light["pulse_direction"] = 1
+                
+                new_size = current_size + light["pulse_direction"] * 0.2
+                x_center = light["x"]
+                y_center = light["y"]
+                
+                self.canvas.coords(
+                    light["id"],
+                    x_center - new_size/2, y_center - new_size/2,
+                    x_center + new_size/2, y_center + new_size/2
+                )
         
         # Repetă animația
-        self.root.after(2000, self.animate_colors)
+        self.root.after(500, self.animate_lights)
+    
+    def animate_text_colors(self):
+        """Animează schimbarea culorii textului"""
+        self.color_index = (self.color_index + 1) % len(self.christmas_colors)
+        
+        # Schimbă culoarea textului principal
+        self.canvas.itemconfig(
+            self.text_main,
+            fill=self.christmas_colors[self.color_index]
+        )
+        
+        # Schimbă și umbra
+        shadow_color = self.darken_color(self.christmas_colors[self.color_index], 80)
+        self.canvas.itemconfig(self.text_shadow, fill=shadow_color)
+        
+        # Repetă animația
+        self.root.after(1500, self.animate_text_colors)
     
     def darken_color(self, hex_color, amount):
         """Întunecă o culoare HEX"""
@@ -185,39 +307,25 @@ class BRFApp:
         return f"#{r:02x}{g:02x}{b:02x}"
     
     def on_resize(self, event):
-        """Reactualizează textul la redimensionare sau minimize/restore"""
-        if event.widget == self.root:
-            current_state = self.root.state()
-            
-            # Dacă s-a schimbat starea (minimize/restore/maximize)
-            if current_state != self.last_state:
-                self.last_state = current_state
-                
-                # Dacă s-a restaurat din minimize, re-crează textul
-                if current_state == "normal":
-                    self.root.after(100, self.update_text)
-            
-            # Pentru redimensionare normală
-            elif current_state == "normal":
-                self.update_text()
+        """Reactualizează totul la redimensionare"""
+        if event.widget == self.root and self.root.state() == "normal":
+            # Re-crează tot designul
+            self.recreate_design()
     
-    def update_text(self):
-        """Actualizează textul"""
-        width = self.canvas.winfo_width()
-        height = self.canvas.winfo_height()
+    def recreate_design(self):
+        """Re-crează întregul design pentru noua dimensiune"""
+        # Șterge tot
+        self.canvas.delete("all")
+        self.snowflakes.clear()
+        self.lights.clear()
         
-        if width > 10 and height > 10:  # Doar dacă e vizibil
-            # Calculează dimensiunea fontului
-            font_size = self.calculate_font_size(width, height)
-            
-            # Actualizează poziția textului
-            self.canvas.coords(self.text_shadow, width // 2 + 3, height // 2 + 3)
-            self.canvas.coords(self.text_main, width // 2, height // 2)
-            
-            # Actualizează dimensiunea fontului
-            self.canvas.itemconfig(self.text_shadow, font=("Arial", font_size, "bold"))
-            self.canvas.itemconfig(self.text_main, font=("Arial", font_size, "bold"))
+        # Re-crează totul
+        self.create_christmas_design()
+        self.create_text()
+        
+        # Restart animații
+        self.root.after(100, self.animate_lights)
 
 # Rulează aplicația
 if __name__ == "__main__":
-    app = BRFApp()
+    app = ChristmasBRFApp()
