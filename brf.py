@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import font
 import math
+import random  # Adaugă această importare
 
 class CoolBRFApp:
     def __init__(self, root):
@@ -65,24 +66,24 @@ class CoolBRFApp:
         self.root.geometry(f'+{x}+{y}')
     
     def create_background(self):
-        # Efect de particule simple
+        # Efect de particule simple - FOLOSEȘTE random, nu tk._random
         self.particles = []
         for _ in range(20):
             x = tk.Frame(self.root, width=2, height=2, bg="#00ffaa")
-            x.place(x=tk._random.randint(0, 500), y=tk._random.randint(0, 300))
+            x.place(x=random.randint(0, 500), y=random.randint(0, 300))  # CORECTAT AICI
             self.particles.append(x)
     
     def create_text(self):
         # Font modern și mare
         self.main_font = font.Font(
             family="Segoe UI",
-            size=48,
+            size=52,  # Mărit de la 48 la 52
             weight="bold"
         )
         
         # Text principal cu efect de umbră
         self.main_text = self.canvas.create_text(
-            250, 100,
+            250, 90,  # Mărit înălțimea de la 100 la 90
             text="BRF",
             font=self.main_font,
             fill="#00ffaa",  # Cyan neon
@@ -92,7 +93,7 @@ class CoolBRFApp:
         # Text secundar mai mic
         self.sub_font = font.Font(
             family="Segoe UI",
-            size=18,
+            size=22,  # Mărit de la 18 la 22
             weight="normal"
         )
         
@@ -106,17 +107,17 @@ class CoolBRFApp:
     
     def create_subtitle(self):
         # Linie decorativă
-        self.canvas.create_line(150, 180, 350, 180, fill="#00ffaa", width=2)
+        self.canvas.create_line(120, 190, 380, 190, fill="#00ffaa", width=2)  # Linie mai lungă
         
         # Text status animat
         self.status_font = font.Font(
             family="Consolas",
-            size=14,
+            size=16,  # Mărit de la 14 la 16
             weight="normal"
         )
         
         self.status_text = self.canvas.create_text(
-            250, 210,
+            250, 230,  # Mutat mai jos
             text="▶ SYSTEM ONLINE",
             font=self.status_font,
             fill="#00ff88",
@@ -144,13 +145,13 @@ class CoolBRFApp:
         status_base = "SYSTEM ONLINE"
         self.canvas.itemconfig(self.status_text, text=f"▶ {status_base}{dots[dot_index]}")
         
-        # Animație particule
+        # Animație particule - CORECTAT AICI
         for i, particle in enumerate(self.particles):
             x = particle.winfo_x()
             y = particle.winfo_y() + 1
             if y > 300:
                 y = 0
-                x = tk._random.randint(0, 500)
+                x = random.randint(0, 500)  # CORECTAT AICI
             particle.place(x=x, y=y)
             
             # Efect de transparență
