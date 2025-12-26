@@ -1,4 +1,5 @@
-import tkfrom tkinter import simpledialog, messagebox, colorchooser
+import tkinter as tk
+from tkinter import simpledialog, messagebox, colorchooser
 import socket, threading, json, time, subprocess, urllib.request
 
 # CONFIGURARE
@@ -16,7 +17,7 @@ class ObsidianEliteMax:
         self.clients = []
         self.color = "#1A1A1B"
         self.tool = "brush"
-        self.size = 6
+        self.size = 8
         self.is_host = False
         self.my_name = "User"
 
@@ -37,7 +38,7 @@ class ObsidianEliteMax:
         self.player_count_lbl.pack(side="right", padx=20)
 
         # --- MAIN LAYOUT ---
-        # Sidebar stânga (Foarte îngust pentru a lăsa loc la Canvas)
+        # Sidebar stânga
         self.side_bar = tk.Frame(self.root, bg="#0A0A0A", width=60)
         self.side_bar.pack(side="left", fill="y")
         
@@ -58,7 +59,7 @@ class ObsidianEliteMax:
         self.canvas = tk.Canvas(self.canvas_container, bg="white", highlightthickness=0, cursor="arrow")
         self.canvas.pack(fill="both", expand=True)
 
-        # Chat-ul la bază (Ocupă puțin loc pe verticală)
+        # Chat-ul la bază
         self.chat_frame = tk.Frame(self.root, bg="#0A0A0A", height=120)
         self.chat_frame.pack(side="bottom", fill="x")
         
@@ -88,8 +89,10 @@ class ObsidianEliteMax:
         box = tk.Frame(self.overlay, bg="#0A0A0A", padx=40, pady=40)
         box.place(relx=0.5, rely=0.5, anchor="center")
         tk.Label(box, text="SELECT MODE", font=("Arial", 18, "bold"), fg="white", bg="#0A0A0A").pack(pady=10)
-        tk.Button(box, text="HOST STUDIO", bg="#00E5FF", fg="black", font=("Arial", 10, "bold"), width=20, height=2, relief="flat", command=lambda: self.init_net("host")).pack(pady=5)
-        tk.Button(box, text="JOIN STUDIO", bg="#222", fg="white", font=("Arial", 10, "bold"), width=20, height=2, relief="flat", command=lambda: self.init_net("client")).pack()
+        tk.Button(box, text="HOST STUDIO", bg="#00E5FF", fg="black", font=("Arial", 10, "bold"), 
+                  width=20, height=2, relief="flat", command=lambda: self.init_net("host")).pack(pady=5)
+        tk.Button(box, text="JOIN STUDIO", bg="#222", fg="white", font=("Arial", 10, "bold"), 
+                  width=20, height=2, relief="flat", command=lambda: self.init_net("client")).pack()
 
     def init_net(self, mode):
         name = simpledialog.askstring("Name", "Username:")
@@ -148,16 +151,20 @@ class ObsidianEliteMax:
                 while "\n" in buf:
                     line, buf = buf.split("\n", 1)
                     msg = json.loads(line)
-                    if msg.get('type') == 'chat': self.root.after(0, self.display_msg, f"{msg['user']}: {msg['text']}")
-                    elif msg.get('type') == 'clear': self.root.after(0, self.canvas.delete, "all")
-                    else: self.root.after(0, self.draw_remote, msg)
+                    if msg.get('type') == 'chat': 
+                        self.root.after(0, self.display_msg, f"{msg['user']}: {msg['text']}")
+                    elif msg.get('type') == 'clear': 
+                        self.root.after(0, self.canvas.delete, "all")
+                    else: 
+                        self.root.after(0, self.draw_remote, msg)
                     self.broadcast(line, conn)
             except: break
-        self.clients.remove(conn)
+        if conn in self.clients: self.clients.remove(conn)
 
     def run_client(self, addr):
         try:
-            h, p = addr.split(":"); self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            h, p = addr.split(":")
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.connect((h, int(p)))
             self.display_msg("System: Connected to Elite Studio!")
             buf = ""
@@ -168,9 +175,12 @@ class ObsidianEliteMax:
                 while "\n" in buf:
                     line, buf = buf.split("\n", 1)
                     msg = json.loads(line)
-                    if msg.get('type') == 'chat': self.root.after(0, self.display_msg, f"{msg['user']}: {msg['text']}")
-                    elif msg.get('type') == 'clear': self.root.after(0, self.canvas.delete, "all")
-                    else: self.root.after(0, self.draw_remote, msg)
+                    if msg.get('type') == 'chat': 
+                        self.root.after(0, self.display_msg, f"{msg['user']}: {msg['text']}")
+                    elif msg.get('type') == 'clear': 
+                        self.root.after(0, self.canvas.delete, "all")
+                    else: 
+                        self.root.after(0, self.draw_remote, msg)
         except: pass
 
     def broadcast(self, msg, skip):
@@ -186,7 +196,8 @@ class ObsidianEliteMax:
     def on_move(self, e):
         rx, ry = e.x/self.cw, e.y/self.ch
         col = "white" if self.tool == "eraser" else self.color
-        self.canvas.create_line(self.last_rx*self.cw, self.last_ry*self.ch, e.x, e.y, fill=col, width=self.size, capstyle="round", smooth=True)
+        self.canvas.create_line(self.last_rx*self.cw, self.last_ry*self.ch, e.x, e.y, 
+                               fill=col, width=self.size, capstyle="round", smooth=True)
         msg = json.dumps({'x1':self.last_rx, 'y1':self.last_ry, 'x2':rx, 'y2':ry, 'c':col, 's':self.size})
         if self.is_host: self.broadcast(msg, None)
         elif self.sock: self.sock.sendall((msg + "\n").encode())
@@ -194,7 +205,8 @@ class ObsidianEliteMax:
 
     def draw_remote(self, m):
         w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
-        self.canvas.create_line(m['x1']*w, m['y1']*h, m['x2']*w, m['y2']*h, fill=m['c'], width=m['s'], capstyle="round", smooth=True)
+        self.canvas.create_line(m['x1']*w, m['y1']*h, m['x2']*w, m['y2']*h, 
+                               fill=m['c'], width=m['s'], capstyle="round", smooth=True)
 
     def clear_all(self):
         self.canvas.delete("all")
