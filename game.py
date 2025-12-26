@@ -6,10 +6,10 @@ import socket, threading, json, time, subprocess, urllib.request
 NGROK_TOKEN = "2djWLmNtLhALFfZ74L1K1mcXSV7_3uJhFnqkWjh2UgeDuZzuS"
 PORT = 12345
 
-class ObsidianElitePro:
+class ObsidianEliteCustomSize:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("Obsidian Elite Pro - Creative Studio")
+        self.root.title("Obsidian Studio - Custom Size Edition")
         self.root.geometry("1500x900")
         self.root.configure(bg="#050505")
 
@@ -17,7 +17,7 @@ class ObsidianElitePro:
         self.clients = []
         self.color = "#1A1A1B"
         self.tool = "brush"
-        self.size = 8
+        self.size = 8  # Dimensiunea curentă (controlată de slider)
         self.is_host = False
         self.my_name = "User"
 
@@ -29,7 +29,7 @@ class ObsidianElitePro:
         self.top_bar = tk.Frame(self.root, bg="#0A0A0A", height=60)
         self.top_bar.pack(side="top", fill="x")
         
-        tk.Label(self.top_bar, text="♦ OBSIDIAN STUDIO", fg="#00E5FF", 
+        tk.Label(self.top_bar, text="♦ OBSIDIAN STUDIO PRO", fg="#00E5FF", 
                  bg="#0A0A0A", font=("Impact", 24)).pack(side="left", padx=25)
 
         self.player_count_lbl = tk.Label(self.top_bar, text="PLAYERS: 1", fg="#888", 
@@ -40,25 +40,34 @@ class ObsidianElitePro:
         self.main_container = tk.Frame(self.root, bg="#050505")
         self.main_container.pack(fill="both", expand=True, padx=5, pady=5)
 
-        # 1. SIDEBAR STÂNGA (UNELTE)
-        self.side_bar = tk.Frame(self.main_container, bg="#0A0A0A", width=70)
+        # 1. SIDEBAR STÂNGA (UNELTE + SIZE SLIDER)
+        self.side_bar = tk.Frame(self.main_container, bg="#0A0A0A", width=80)
         self.side_bar.pack(side="left", fill="y", padx=5)
         
-        tools = [("✏️", "pencil", 2), ("🖌️", "brush", 8), ("🧽", "eraser", 40), ("🗑️", "clear", 0)]
-        for icon, name, sz in tools:
-            cmd = self.clear_all if name == "clear" else lambda n=name, s=sz: self.set_tool(n, s)
+        tools = [("✏️", "pencil"), ("🖌️", "brush"), ("🧽", "eraser"), ("🗑️", "clear")]
+        for icon, name in tools:
+            cmd = self.clear_all if name == "clear" else lambda n=name: self.set_tool(n)
             btn = tk.Button(self.side_bar, text=icon, font=("Arial", 18), bg="#0A0A0A", fg="white",
                            relief="flat", activebackground="#222", command=cmd)
-            btn.pack(pady=15, fill="x")
+            btn.pack(pady=10, fill="x")
 
-        self.color_ind = tk.Frame(self.side_bar, bg=self.color, width=40, height=40, cursor="hand2")
-        self.color_ind.pack(pady=15)
+        # Culoare
+        self.color_ind = tk.Frame(self.side_bar, bg=self.color, width=40, height=40, cursor="hand2", relief="solid", borderwidth=1)
+        self.color_ind.pack(pady=10)
         self.color_ind.bind("<Button-1>", lambda e: self.choose_color())
+
+        # SLIDER PENTRU MĂRIME (NOU!)
+        tk.Label(self.side_bar, text="SIZE", fg="#555", bg="#0A0A0A", font=("Arial", 8, "bold")).pack(pady=(10, 0))
+        self.size_slider = tk.Scale(self.side_bar, from_=1, to=100, orient="vertical", 
+                                   bg="#0A0A0A", fg="#00E5FF", highlightthickness=0, 
+                                   troughcolor="#151515", length=200, command=self.update_size)
+        self.size_slider.set(self.size)
+        self.size_slider.pack(pady=5)
 
         # 2. CHAT ÎN DREAPTA
         self.chat_frame = tk.Frame(self.main_container, bg="#0A0A0A", width=300)
         self.chat_frame.pack(side="right", fill="y", padx=5)
-        self.chat_frame.pack_propagate(False) # Menține lățimea fixă
+        self.chat_frame.pack_propagate(False)
         
         tk.Label(self.chat_frame, text="STUDIO CHAT", fg="#555", bg="#0A0A0A", font=("Arial", 9, "bold")).pack(pady=10)
         
@@ -70,23 +79,25 @@ class ObsidianElitePro:
         self.msg_entry.pack(fill="x", padx=10, pady=15, ipady=10)
         self.msg_entry.bind("<Return>", self.send_chat_msg)
 
-        # 3. CANVAS CENTRAL (GIGANT)
+        # 3. CANVAS CENTRAL
         canvas_border = tk.Frame(self.main_container, bg="#1A1A1B", padx=2, pady=2)
         canvas_border.pack(side="left", fill="both", expand=True, padx=5)
         
-        self.canvas = tk.Canvas(canvas_border, bg="white", highlightthickness=0, cursor="arrow")
+        self.canvas = tk.Canvas(canvas_border, bg="white", highlightthickness=0, cursor="crosshair")
         self.canvas.pack(fill="both", expand=True)
 
-    def set_tool(self, name, sz):
+    def update_size(self, val):
+        self.size = int(val)
+
+    def set_tool(self, name):
         self.tool = name
-        self.size = sz
         self.color_ind.config(bg="white" if name == "eraser" else self.color)
 
     def choose_color(self):
         c = colorchooser.askcolor()[1]
         if c: 
             self.color = c
-            self.set_tool("brush", 8)
+            self.tool = "brush"
             self.color_ind.config(bg=c)
 
     def show_menu(self):
@@ -137,7 +148,7 @@ class ObsidianElitePro:
                 url = json.loads(res.read().decode())['tunnels'][0]['public_url'].replace("tcp://", "")
                 self.root.clipboard_clear()
                 self.root.clipboard_append(url)
-                self.display_msg(f"Link: {url}") # AFISARE LINK DIRECT
+                self.display_msg(f"Link: {url}")
         except: self.display_msg("System: Error with Ngrok.")
         
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -194,6 +205,7 @@ class ObsidianElitePro:
     def on_move(self, e):
         rx, ry = e.x/self.cw, e.y/self.ch
         col = "white" if self.tool == "eraser" else self.color
+        # Folosește self.size care vine de la slider
         self.canvas.create_line(self.last_rx*self.cw, self.last_ry*self.ch, e.x, e.y, fill=col, width=self.size, capstyle="round", smooth=True)
         msg = json.dumps({'x1':self.last_rx, 'y1':self.last_ry, 'x2':rx, 'y2':ry, 'c':col, 's':self.size})
         if self.is_host: self.broadcast(msg, None)
@@ -211,4 +223,4 @@ class ObsidianElitePro:
         elif self.sock: self.sock.sendall((msg + "\n").encode())
 
 if __name__ == "__main__":
-    ObsidianElitePro().root.mainloop()
+    ObsidianEliteCustomSize().root.mainloop()
